@@ -45,11 +45,8 @@ def add_noise(MAX_BOX_WIDTH, mark, forground):
         pos_x = np.random.randint(0, MAX_BOX_WIDTH[1] - 3 * noise_size)
         pos_y = np.random.randint(0, MAX_BOX_WIDTH[2] - 3 * noise_size)
         pos_z = np.random.randint(0, MAX_BOX_WIDTH[0] - 3 * noise_size)
-        noise_value = np.random.randint(forground * 0.5, forground * 1.5)
-        low_noise_value = noise_value - noise_value // 2
-        high_noise_value = noise_value + noise_value // 2
 
-        value = np.random.randint(low_noise_value, high_noise_value)
+        value = np.random.randint(forground * 0.5, forground * 1.5)
 
         z_list, x_list, y_list = np.where(radius_list[noise_size - 1] == 1)
 
@@ -85,10 +82,6 @@ def gaussianNoisyAddGray3D(image,mean,std,data_type):
     gauss = np.random.normal(mean,std,(row,col,dep))
     gauss = gauss.reshape(row,col,dep)
     noisy = image + gauss
-    # if data_type == np.uint16:
-    #     noisy = normalizeImage16(noisy)
-    # else:
-    #     noisy = normalizeImage8(noisy)
     return noisy
 
 def getRandChildNumber():
@@ -102,8 +95,7 @@ def getRandChildNumber():
 
 
 def getChildRadius(depth):
-    # print(np.random.uniform(3,6) * (0.8)**(depth))
-    return np.random.uniform(3,6) * (0.8)**(depth)
+    return np.random.uniform(1,3) * (0.9)**(depth)
 
 
 
@@ -202,8 +194,8 @@ def setMarkWithCone(mark, cone, mark_shape, use_bbox=False):
 
 
 
-def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_type):
 
+def simulate3DTreeModel_dendrite(MAX_BOX_WIDTH, internal_feature, external_feature, data_type):
     if internal_feature == True:
         max_depth = np.random.randint(6, 8)
         base_length = np.random.randint(35, 55)
@@ -211,38 +203,34 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
         max_depth = 2
         base_length = np.random.randint(100, 150)
 
-
     MAX_TREE_DEPTH = max_depth
     BASE_LENGTH = base_length
 
-
     # Init space
-    mark_shape = (MAX_BOX_WIDTH[0],MAX_BOX_WIDTH[1],MAX_BOX_WIDTH[2])
+    mark_shape = (MAX_BOX_WIDTH[0], MAX_BOX_WIDTH[1], MAX_BOX_WIDTH[2])
     mark = np.zeros(mark_shape, dtype=np.uint16)
 
     # Create root node
     node_count = 0
-
-    root_r = np.random.uniform(6,10)
-
+    # 胞体大小
+    root_r = np.random.uniform(6, 10)
 
     # 起始点位置
-    pos_lib = [[MAX_BOX_WIDTH[0]//2,MAX_BOX_WIDTH[1]//2,MAX_BOX_WIDTH[2]//2]]
-    pos_random = np.random.randint(0,1)
+    pos_lib = [[MAX_BOX_WIDTH[0] // 2, MAX_BOX_WIDTH[1] // 2, MAX_BOX_WIDTH[2] // 2]]
+    pos_random = np.random.randint(0, 1)
 
-    root_pos = (pos_lib[pos_random][0],pos_lib[pos_random][1],pos_lib[pos_random][2])
+    root_pos = (pos_lib[pos_random][0], pos_lib[pos_random][1], pos_lib[pos_random][2])
 
     node_count += 1
-    root_node = Vertex(node_count,0,root_pos[0],root_pos[1],root_pos[2],root_r,-1)
+    root_node = Vertex(node_count, 0, root_pos[0], root_pos[1], root_pos[2], root_r, -1)
     setMarkWithSphere(mark, Sphere(Point3D(*root_node.pos), root_node.r), mark_shape)
     is_axons = False
-    axons_num = 0
+    axons_num = 0  # 在第x个后，分叉
 
     # Creante dequeue and list to contain result
-    dq = deque([(root_node, 0, is_axons)]) # 第二项表示node节点的depth
+    dq = deque([(root_node, 0, is_axons)])  # 第二项表示node节点的depth
     nodes = {}
     graph = {}
-
 
     id_list = []
     pos_x_list = []
@@ -264,7 +252,6 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
         r_list.append(root_node.r)
         pid_list.append(root_node.p_idx)
 
-
         dq.popleft()
 
         # Add to nodes and graph
@@ -272,7 +259,7 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
         v2 = root_node.p_idx
         if root_node.idx not in nodes:
             nodes[root_node.idx] = root_node
-        if v1>0 and v2>0:
+        if v1 > 0 and v2 > 0:
             if not v1 in graph:
                 graph[v1] = set([v2])
             else:
@@ -283,38 +270,39 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
             else:
                 graph[v2].add(v1)
 
-        if root_depth<MAX_TREE_DEPTH:
+        if root_depth < MAX_TREE_DEPTH:
             # Get children number
-            if root_node.idx==1:
-                mask = np.array([[1,1,1],
-                                 [-1,1,1],
-                                 [1,1,-1],
-                                 [-1,1,-1]])
+            if root_node.idx == 1:  # 根节点单独处理
+                mask = np.array([[1, 1, 1],
+                                 [-1, 1, 1],
+                                 [1, 1, -1],
+                                 [-1, 1, -1]])
                 for i in range(2):
-
+                    # 获取分支半径和长度
 
                     if i == 0:
                         child_r = root_r / 2
-                        child_length = root_r * 2 # getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
-                        theta_z = np.random.uniform(75,105)
-                        theta_y = np.random.uniform(-15,15)
+                        child_length = root_r * 2  # getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
+                        theta_z = np.random.uniform(75, 105)
+                        theta_y = np.random.uniform(-15, 15)
                     else:
                         child_r = root_r / 2
-                        child_length = root_r * 2 #getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
-                        theta_z = np.random.uniform(-105,-75)
-                        theta_y = np.random.uniform(-15,15)
+                        child_length = root_r * 2  # getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
+                        theta_z = np.random.uniform(-105, -75)
+                        theta_y = np.random.uniform(-15, 15)
 
-                    A = rotation_matrix(theta_z/180*np.math.pi, [0,0,1])
-                    B = rotation_matrix(-theta_y/180*np.math.pi, [0,1,0])
-                    rot_mat = np.matmul(A,B)
-                    p0 = np.array([[child_length],[0],[0],[1]])
+                    A = rotation_matrix(theta_z / 180 * np.math.pi, [0, 0, 1])
+                    B = rotation_matrix(-theta_y / 180 * np.math.pi, [0, 1, 0])
+                    rot_mat = np.matmul(A, B)
+                    p0 = np.array([[child_length], [0], [0], [1]])
                     p1 = np.matmul(rot_mat, p0)
-                    child_pos = (int(p1[0]*mask[i][0]+root_node.pos[0]), \
-                                 int(p1[1]*mask[i][1]+root_node.pos[1]), \
-                                 int(p1[2]*mask[i][2]+root_node.pos[2]))
+                    child_pos = (int(p1[0] * mask[i][0] + root_node.pos[0]), \
+                                 int(p1[1] * mask[i][1] + root_node.pos[1]), \
+                                 int(p1[2] * mask[i][2] + root_node.pos[2]))
                     if ImageUtils.bboxCheck3D(child_pos[0], child_pos[1], child_pos[2], child_r, mark_shape):
                         node_count += 1
-                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r, root_node.idx)
+                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r,
+                                            root_node.idx)
                         # 绘制
                         setMarkWithSphere(mark, Sphere(Point3D(*child_node.pos), child_node.r), mark_shape)
                         setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, \
@@ -322,25 +310,25 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
 
                         # Add to dequeue
                         if i == 0:
-                            dq.append((child_node, root_depth+1, False))
+                            dq.append((child_node, root_depth + 1, False))
                         else:
                             dq.append((child_node, root_depth + 1, True))
 
             elif root_axons:
-                if axons_num < 3:
+                if axons_num < 3:  # 4个轴突结构之后开始分叉
                     child_num = 1
                 else:
                     child_num = getRandChildNumber()
-                axons_num +=1
+                axons_num += 1
                 child_angles_range = Draw3DTools.sliceRange(0, 360, child_num)
 
                 for i in range(child_num):
 
-
+                    # 获取分支半径和长度
                     child_r = getChildRadius(root_depth + 1)
                     child_length = getChildLength(BASE_LENGTH, root_depth + 1)
 
-
+                    # 获取生长角度
                     if child_num == 1:
                         theta_z = np.random.uniform(0, 360)
                         theta_y = np.random.uniform(75, 105)
@@ -354,30 +342,30 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
                     p0 = np.array([[child_length], [0], [0], [1]])
                     p1 = np.matmul(rot_mat, p0)
 
-                    grand_node = nodes[root_node.p_idx]
+                    grand_node = nodes[root_node.p_idx]  # root节点的父节点
                     p_a = Point3D(0, 0, 0)
                     p_c = Point3D(root_node.pos[0] - grand_node.pos[0], \
                                   root_node.pos[1] - grand_node.pos[1], \
                                   root_node.pos[2] - grand_node.pos[2])
                     p_b = p_a.medianWithPoint(p_c)
-                    v1 = np.array([[p_a.x, p_b.x, p_c.x],
+                    v1 = np.array([[p_a.x, p_b.x, p_c.x],  # 局部坐标点
                                    [p_a.y, p_b.y, p_c.y],
                                    [p_a.z, p_b.z, p_c.z],
                                    [1, 1, 1]])
                     Dis = p_a.distanceWithPoint(p_c)
-                    v0 = np.array([[0, 0, 0],
+                    v0 = np.array([[0, 0, 0],  # 局部坐标点
                                    [0, 0, 0],
                                    [-Dis, -Dis / 2, 0],
                                    [1, 1, 1]])
                     rev_mat = superimposition_matrix(v0, v1)
                     p2 = np.matmul(rev_mat, p1)
                     child_pos = (
-                    int(p2[0] + grand_node.pos[0]), int(p2[1] + grand_node.pos[1]), int(p2[2] + grand_node.pos[2]))
+                        int(p2[0] + grand_node.pos[0]), int(p2[1] + grand_node.pos[1]), int(p2[2] + grand_node.pos[2]))
                     if ImageUtils.bboxCheck3D(child_pos[0], child_pos[1], child_pos[2], child_r, mark_shape):
                         node_count += 1
                         child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r,
                                             root_node.idx)
-
+                        # 绘制
                         setMarkWithSphere(mark, Sphere(Point3D(*child_node.pos), child_node.r), mark_shape)
                         setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, Point3D(*child_node.pos),
                                                    child_node.r), mark_shape)
@@ -394,56 +382,65 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
 
                 for i in range(child_num):
 
+                    # 获取分支半径和长度
+                    child_r = getChildRadius(root_depth + 1)
+                    child_length = getChildLength(BASE_LENGTH, root_depth + 1)
 
-                    child_r = getChildRadius(root_depth+1)
-                    child_length = getChildLength(BASE_LENGTH,root_depth+1)
-
-
-                    if child_num==1:
-                        theta_z = np.random.uniform(0,360)
-                        theta_y = np.random.uniform(75,105)
+                    # 获取生长角度
+                    if child_num == 1:
+                        theta_z = np.random.uniform(0, 360)
+                        theta_y = np.random.uniform(75, 105)
                     else:
 
-                        theta_z = np.random.uniform(child_angles_range[i][0],child_angles_range[i][1])
+                        theta_z = np.random.uniform(child_angles_range[i][0], child_angles_range[i][1])
                         theta_y = np.random.uniform(45, 70)
 
-                    A = rotation_matrix(theta_z/180*np.math.pi, [0,0,1])
-                    B = rotation_matrix(-theta_y/180*np.math.pi, [0,1,0])
-                    rot_mat = np.matmul(A,B)
-                    p0 = np.array([[child_length],[0],[0],[1]])
+                    A = rotation_matrix(theta_z / 180 * np.math.pi, [0, 0, 1])
+                    B = rotation_matrix(-theta_y / 180 * np.math.pi, [0, 1, 0])
+                    rot_mat = np.matmul(A, B)
+                    p0 = np.array([[child_length], [0], [0], [1]])
                     p1 = np.matmul(rot_mat, p0)
 
-                    grand_node = nodes[root_node.p_idx]
-                    p_a = Point3D(0,0,0)
-                    p_c = Point3D(root_node.pos[0]-grand_node.pos[0], \
-                                  root_node.pos[1]-grand_node.pos[1], \
-                                  root_node.pos[2]-grand_node.pos[2])
+                    grand_node = nodes[root_node.p_idx]  # root节点的父节点
+                    p_a = Point3D(0, 0, 0)
+                    p_c = Point3D(root_node.pos[0] - grand_node.pos[0], \
+                                  root_node.pos[1] - grand_node.pos[1], \
+                                  root_node.pos[2] - grand_node.pos[2])
                     p_b = p_a.medianWithPoint(p_c)
-                    v1=np.array([[p_a.x, p_b.x, p_c.x],
-                                 [p_a.y, p_b.y, p_c.y],
-                                 [p_a.z, p_b.z, p_c.z],
-                                 [   1,    1,    1]])
-                    Dis=p_a.distanceWithPoint(p_c)
-                    v0=np.array([[0,     0,   0],
-                                 [0,     0,   0],
-                                 [-Dis, -Dis/2, 0],
-                                 [1,     1,  1]])
-                    rev_mat = superimposition_matrix(v0,v1)
+                    v1 = np.array([[p_a.x, p_b.x, p_c.x],  # 局部坐标点
+                                   [p_a.y, p_b.y, p_c.y],
+                                   [p_a.z, p_b.z, p_c.z],
+                                   [1, 1, 1]])
+                    Dis = p_a.distanceWithPoint(p_c)
+                    v0 = np.array([[0, 0, 0],  # 局部坐标点
+                                   [0, 0, 0],
+                                   [-Dis, -Dis / 2, 0],
+                                   [1, 1, 1]])
+                    rev_mat = superimposition_matrix(v0, v1)
                     p2 = np.matmul(rev_mat, p1)
-                    child_pos = (int(p2[0]+grand_node.pos[0]), int(p2[1]+grand_node.pos[1]), int(p2[2]+grand_node.pos[2]))
+                    child_pos = (
+                    int(p2[0] + grand_node.pos[0]), int(p2[1] + grand_node.pos[1]), int(p2[2] + grand_node.pos[2]))
                     if ImageUtils.bboxCheck3D(child_pos[0], child_pos[1], child_pos[2], child_r, mark_shape):
                         node_count += 1
-                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r, root_node.idx)
-
+                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r,
+                                            root_node.idx)
+                        # 绘制
                         setMarkWithSphere(mark, Sphere(Point3D(*child_node.pos), child_node.r), mark_shape)
-                        setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, Point3D(*child_node.pos), child_node.r), mark_shape)
+                        setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, Point3D(*child_node.pos),
+                                                   child_node.r), mark_shape)
 
                         # Add to dequeue
-                        dq.append((child_node, root_depth+1, False))
+                        dq.append((child_node, root_depth + 1, False))
     mark = mark.astype(np.uint8)
 
     # save swc
-    swc_data = np.zeros([len(id_list),7])
+    # print(id_list)
+    # print(pos_x_list)
+    # print(pos_y_list)
+    # print(pos_z_list)
+    # print(r_list)
+    # print(pid_list)
+    swc_data = np.zeros([len(id_list), 7])
     for i in range(swc_data.shape[0]):
         swc_data[i][0] = id_list[i]
         swc_data[i][1] = 0
@@ -453,35 +450,34 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
         swc_data[i][5] = r_list[i]
         swc_data[i][6] = pid_list[i]
 
-
     # external feature
     img_sim = copy.deepcopy(mark)
     img_fg_pos = np.where(mark == 1)
 
     for i in range(len(img_fg_pos[0])):
-        is_fg = np.random.choice([0, 1], p=[0.8, 0.2])
+        is_fg = np.random.choice([0, 1], p=[0.5, 0.5])
         if is_fg == 1:
             z = img_fg_pos[0][i]
             x = img_fg_pos[1][i]
             y = img_fg_pos[2][i]
             img_sim[z][x][y] = 0
-    if data_type == np.uint8: # 8bit image
+    if data_type == np.uint8:  # 8bit image
         if external_feature == True:
-            forground = np.random.randint(50, 250)
+            forground = np.random.randint(50, 300)
             background_mean = np.random.randint(1, 20)
-            background_std = background_mean/4
+            background_std = np.random.randint(0, 5)
         else:
-            forground = np.random.randint(100, 250)
+            forground = np.random.randint(20, 250)
             background_mean = 1
             background_std = 0
-    else: # 16bit image
+    else:  # 16bit image
         if external_feature == True:
             forground = np.random.randint(100, 1000)
             background_mean = np.random.randint(1, 200)
             background_std = np.random.randint(0, 20)
 
         else:
-            forground = np.random.randint(250, 1000)
+            forground = np.random.randint(100, 1000)
             background_mean = 1
             background_std = 0
 
@@ -499,7 +495,8 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
 
     image = gaussianNoisyAddGray3D(img_sim_fg, background_mean, background_std, data_type)
 
-    print('forground: %3f ,background mean: %3f ,background std: %3f' % (forground, background_mean, background_std))
+    print('forground: %3f ,background mean: %3f ,background std: %3f' % (
+    forground * 0.5, background_mean, background_std))
 
     if data_type == np.uint16:
         image = normalizeImage16(image)
@@ -509,5 +506,255 @@ def simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature, data_
     return image, mark, swc_data
 
 
+def simulate3DTreeModel_axon(MAX_BOX_WIDTH, internal_feature, external_feature, data_type):
+    if internal_feature == True:
+        max_depth = np.random.randint(10, 12)
+        base_length = np.random.randint(35, 55)
+    else:
+        max_depth = 2
+        base_length = np.random.randint(100, 150)
 
+    MAX_TREE_DEPTH = max_depth
+    BASE_LENGTH = base_length
 
+    # Init space
+    mark_shape = (MAX_BOX_WIDTH[0], MAX_BOX_WIDTH[1], MAX_BOX_WIDTH[2])
+    mark = np.zeros(mark_shape, dtype=np.uint16)
+
+    # Create root node
+    node_count = 0
+    # 胞体大小
+    root_r = np.random.uniform(1, 3)
+
+    # 起始点位置
+    pos_lib = [[MAX_BOX_WIDTH[0] // 2, MAX_BOX_WIDTH[1] // 2, MAX_BOX_WIDTH[2] // 2]]
+    pos_random = np.random.randint(0, 1)
+
+    root_pos = (pos_lib[pos_random][0], pos_lib[pos_random][1], pos_lib[pos_random][2])
+
+    node_count += 1
+    root_node = Vertex(node_count, 0, root_pos[0], root_pos[1], root_pos[2], root_r, -1)
+
+    setMarkWithSphere(mark, Sphere(Point3D(*root_node.pos), root_node.r), mark_shape)
+    is_axons = False
+    axons_num = 0  # 在第x个后，分叉
+
+    # Creante dequeue and list to contain result
+    dq = deque([(root_node, 0, is_axons)])  # 第二项表示node节点的depth
+    nodes = {}
+    graph = {}
+
+    id_list = []
+    pos_x_list = []
+    pos_y_list = []
+    pos_z_list = []
+    r_list = []
+    pid_list = []
+
+    while len(dq):
+        root_node = dq[0][0]
+        root_depth = dq[0][1]
+        root_axons = dq[0][2]
+
+        # print(root_node)
+        id_list.append(root_node.idx)
+        pos_x_list.append(root_node.pos[2])
+        pos_y_list.append(root_node.pos[1])
+        pos_z_list.append(root_node.pos[0])
+        r_list.append(root_node.r)
+        pid_list.append(root_node.p_idx)
+
+        dq.popleft()
+
+        # Add to nodes and graph
+        v1 = root_node.idx
+        v2 = root_node.p_idx
+        if root_node.idx not in nodes:
+            nodes[root_node.idx] = root_node
+        if v1 > 0 and v2 > 0:
+            if not v1 in graph:
+                graph[v1] = set([v2])
+            else:
+                graph[v1].add(v2)
+
+            if not v2 in graph:
+                graph[v2] = set([v1])
+            else:
+                graph[v2].add(v1)
+
+        if root_depth < MAX_TREE_DEPTH:
+            # Get children number
+            if root_node.idx == 1:  # 根节点单独处理
+                mask = np.array([[1, 1, 1],
+                                 [-1, 1, 1],
+                                 [1, 1, -1],
+                                 [-1, 1, -1]])
+                for i in range(2):
+                    # 获取分支半径和长度
+
+                    if i == 0:
+                        child_r = root_r / 2
+                        child_length = root_r * 2  # getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
+                        # theta_z = np.random.uniform(60,120)
+                        # theta_y = np.random.uniform(-30,30)
+                        theta_z = np.random.uniform(0, 360)
+                        theta_y = np.random.uniform(0, 360)
+                    else:
+                        child_r = root_r / 2
+                        child_length = root_r * 2  # getChildLength(BASE_LENGTH, root_depth + 1, MAX_TREE_DEPTH)
+                        # theta_z = np.random.uniform(-120,-60)
+                        # theta_y = np.random.uniform(-30,30)
+                        theta_z = -theta_z
+                        theta_y = -theta_y
+
+                    A = rotation_matrix(theta_z / 180 * np.math.pi, [0, 0, 1])
+                    B = rotation_matrix(-theta_y / 180 * np.math.pi, [0, 1, 0])
+                    rot_mat = np.matmul(A, B)
+                    p0 = np.array([[child_length], [0], [0], [1]])
+                    p1 = np.matmul(rot_mat, p0)
+                    child_pos = (int(p1[0] * mask[i][0] + root_node.pos[0]), \
+                                 int(p1[1] * mask[i][1] + root_node.pos[1]), \
+                                 int(p1[2] * mask[i][2] + root_node.pos[2]))
+                    if ImageUtils.bboxCheck3D(child_pos[0], child_pos[1], child_pos[2], child_r, mark_shape):
+                        node_count += 1
+                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r,
+                                            root_node.idx)
+                        # 绘制
+                        setMarkWithSphere(mark, Sphere(Point3D(*child_node.pos), child_node.r), mark_shape)
+                        setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, \
+                                                   Point3D(*child_node.pos), child_node.r), mark_shape)
+
+                        # Add to dequeue
+                        if i == 0:
+                            dq.append((child_node, root_depth + 1, False))
+                        else:
+                            dq.append((child_node, root_depth + 1, True))
+
+            else:
+                child_num = 1
+                child_angles_range = Draw3DTools.sliceRange(0, 360, child_num)
+
+                for i in range(child_num):
+
+                    # 获取分支半径和长度
+                    child_r = getChildRadius(root_depth + 1)
+                    child_length = getChildLength(BASE_LENGTH, root_depth + 1)
+
+                    # 获取生长角度
+                    if child_num == 1:
+                        theta_z = np.random.uniform(0, 360)
+                        theta_y = np.random.uniform(60, 120)
+                    else:
+
+                        theta_z = np.random.uniform(child_angles_range[i][0], child_angles_range[i][1])
+                        theta_y = np.random.uniform(30, 90)
+
+                    A = rotation_matrix(theta_z / 180 * np.math.pi, [0, 0, 1])
+                    B = rotation_matrix(-theta_y / 180 * np.math.pi, [0, 1, 0])
+                    rot_mat = np.matmul(A, B)
+                    p0 = np.array([[child_length], [0], [0], [1]])
+                    p1 = np.matmul(rot_mat, p0)
+
+                    grand_node = nodes[root_node.p_idx]  # root节点的父节点
+                    p_a = Point3D(0, 0, 0)
+                    p_c = Point3D(root_node.pos[0] - grand_node.pos[0], \
+                                  root_node.pos[1] - grand_node.pos[1], \
+                                  root_node.pos[2] - grand_node.pos[2])
+                    p_b = p_a.medianWithPoint(p_c)
+                    v1 = np.array([[p_a.x, p_b.x, p_c.x],  # 局部坐标点
+                                   [p_a.y, p_b.y, p_c.y],
+                                   [p_a.z, p_b.z, p_c.z],
+                                   [1, 1, 1]])
+                    Dis = p_a.distanceWithPoint(p_c)
+                    v0 = np.array([[0, 0, 0],  # 局部坐标点
+                                   [0, 0, 0],
+                                   [-Dis, -Dis / 2, 0],
+                                   [1, 1, 1]])
+                    rev_mat = superimposition_matrix(v0, v1)
+                    p2 = np.matmul(rev_mat, p1)
+                    child_pos = (
+                    int(p2[0] + grand_node.pos[0]), int(p2[1] + grand_node.pos[1]), int(p2[2] + grand_node.pos[2]))
+                    if ImageUtils.bboxCheck3D(child_pos[0], child_pos[1], child_pos[2], child_r, mark_shape):
+                        node_count += 1
+                        child_node = Vertex(node_count, 0, child_pos[0], child_pos[1], child_pos[2], child_r,
+                                            root_node.idx)
+                        # 绘制
+                        setMarkWithSphere(mark, Sphere(Point3D(*child_node.pos), child_node.r), mark_shape)
+                        setMarkWithCone(mark, Cone(Point3D(*root_node.pos), root_node.r, Point3D(*child_node.pos),
+                                                   child_node.r), mark_shape)
+
+                        # Add to dequeue
+                        dq.append((child_node, root_depth + 1, False))
+    mark = mark.astype(np.uint8)
+
+    # save swc
+    # print(id_list)
+    # print(pos_x_list)
+    # print(pos_y_list)
+    # print(pos_z_list)
+    # print(r_list)
+    # print(pid_list)
+    swc_data = np.zeros([len(id_list), 7])
+    for i in range(swc_data.shape[0]):
+        swc_data[i][0] = id_list[i]
+        swc_data[i][1] = 0
+        swc_data[i][2] = pos_x_list[i]
+        swc_data[i][3] = pos_y_list[i]
+        swc_data[i][4] = pos_z_list[i]
+        swc_data[i][5] = r_list[i]
+        swc_data[i][6] = pid_list[i]
+
+    # external feature
+    img_sim = copy.deepcopy(mark)
+    img_fg_pos = np.where(mark == 1)
+
+    for i in range(len(img_fg_pos[0])):
+        is_fg = np.random.choice([0, 1], p=[0.5, 0.5])
+        if is_fg == 1:
+            z = img_fg_pos[0][i]
+            x = img_fg_pos[1][i]
+            y = img_fg_pos[2][i]
+            img_sim[z][x][y] = 0
+    if data_type == np.uint8:  # 8bit image
+        if external_feature == True:
+            forground = np.random.randint(20, 250)
+            background_mean = np.random.randint(1, 20)
+            background_std = np.random.randint(0, 5)
+        else:
+            forground = np.random.randint(20, 250)
+            background_mean = 1
+            background_std = 0
+    else:  # 16bit image
+        if external_feature == True:
+            forground = np.random.randint(100, 1000)
+            background_mean = np.random.randint(1, 200)
+            background_std = np.random.randint(0, 20)
+
+        else:
+            forground = np.random.randint(100, 1000)
+            background_mean = 1
+            background_std = 0
+
+    if external_feature == True:
+        # foreground -> poisson
+        img_sim_fg = np.random.poisson(lam=img_sim * forground)
+        img_sim_fg = ndfilter.gaussian_filter(img_sim_fg, [1, 1, 1])
+
+        # background -> add noise
+        img_sim_fg = img_sim_fg + add_noise(MAX_BOX_WIDTH, mark, forground)
+    else:
+        img_sim_fg = mark * forground
+
+    # print(img_sim_fg.shape)
+
+    image = gaussianNoisyAddGray3D(img_sim_fg, background_mean, background_std, data_type)
+
+    print('forground: %3f ,background mean: %3f ,background std: %3f' % (
+    forground * 0.5, background_mean, background_std))
+
+    if data_type == np.uint16:
+        image = normalizeImage16(image)
+    else:
+        image = normalizeImage8(image)
+
+    return image, mark, swc_data

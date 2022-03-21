@@ -1,32 +1,33 @@
 import numpy as np
 from klib.baseio import *
 from scipy.ndimage import filters as ndfilter
-from klib.glib.DrawSimulationSWCModel import simulate3DTreeModel, save_swc
+from klib.glib.DrawSimulationSWCModel import simulate3DTreeModel_dendrite,simulate3DTreeModel_axon, save_swc
 import copy
 import cv2 as cv
 import multiprocessing as mp
 from skimage import morphology
 import time
 
+
 # init parameter
-data_type = np.uint8
+data_type = np.uint16
 internal_feature = True
 external_feature = True
-image_number = 4
+image_number = 6
 
 # size of training data
 size_x = 64
 size_y = 64
-channel = 16
-steps = 8
+channel = 32
+
 
 # data dir
-data_image_dir = 'data/sim_img/'
-data_label_dir = 'data/sim_label/'
-data_swc_dir = 'data/sim_swc/'
+data_image_dir = 'data/simulator_data/sim_img/'
+data_label_dir = 'data/simulator_data/sim_label/'
+data_swc_dir = 'data/simulator_data/sim_swc/'
 
-train_data_dir = 'data/data_divide/'
-train_label_dir = 'data/label_divide/'
+train_data_dir = 'data/simulator_data/data_divide/'
+train_label_dir = 'data/simulator_data/label_divide/'
 
 def main(img_num):
     np.random.seed()
@@ -40,7 +41,8 @@ def main(img_num):
     MAX_BOX_WIDTH = [MAX_BOX_Z,MAX_BOX_X,MAX_BOX_Y]
 
 
-    img_sim, label_sim, swc_data = simulate3DTreeModel(MAX_BOX_WIDTH, internal_feature, external_feature,  data_type=data_type)
+    img_sim, label_sim, swc_data = simulate3DTreeModel_dendrite(MAX_BOX_WIDTH, internal_feature, external_feature,  data_type=data_type)
+    # img_sim, label_sim, swc_data = simulate3DTreeModel_axon(MAX_BOX_WIDTH, internal_feature, external_feature,  data_type=data_type)
     SHAPE = img_sim.shape
 
     img_new = np.zeros([int(SHAPE[0] // 2), int(SHAPE[1]), int(SHAPE[2])], dtype=data_type)
@@ -103,7 +105,7 @@ def main(img_num):
 
 if __name__ == '__main__':
     # multiprocessing
-    cpu_core_num = 4
+    cpu_core_num = 5
     pool = mp.Pool(processes=cpu_core_num)  # we set cpu core is 4
     pool.map(main, range(0, image_number))
 

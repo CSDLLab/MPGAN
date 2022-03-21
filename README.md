@@ -14,28 +14,39 @@ In this paper, we propose a novel strategy of using two-stage generative models 
 
 * Linux 
 * NVIDIA GPU
-* TensorFlow
+* TensorFlow==1.15.0
 
 ### Installation
 
 Create virtual environment and install required packages:
 
-```
+```python
 conda create -n mpgan
 conda activate mpgan
-conda install -r requirements.txt
+conda install --yes --file requirements.txt
 ```
 
 ## Usage
 
+### First Stage: Neuron Image Simulator 
 
+```python
+python 1_simulator.py
+```
 
+<img src="imgs/2.png" alt="image-20220318174040337"  />	
 
+### Second Stage: GAN
+
+```python
+python 2_mpgan.py
+```
 
 ## Data
 
 
 
+![image-20220318174040337](imgs/3.png)	
 
 
 
