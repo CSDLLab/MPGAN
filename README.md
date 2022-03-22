@@ -12,13 +12,20 @@ In this paper, we propose a novel strategy of using two-stage generative models 
 
 ### Prerequisites
 
-* Linux 
-* NVIDIA GPU
-* TensorFlow==1.15.0
+- Linux 
+- NVIDIA GPU
+- TensorFlow==1.15.0
 
 ### Installation
 
-Create virtual environment and install required packages:
+- Clone this repo:
+
+```python
+git clone https://github.com/CSDLLab/MPGAN.git
+cd MPGAN
+```
+
+- Create virtual environment and install required packages:
 
 ```python
 conda create -n mpgan
@@ -26,17 +33,25 @@ conda activate mpgan
 conda install --yes --file requirements.txt
 ```
 
+
 ## Usage
 
 ### First Stage: Neuron Image Simulator 
+
+- Use first-stage simulator to generate the fake images:
+
 
 ```python
 python 1_simulator.py
 ```
 
-![image-2](imgs/2.png)	
+- The output images are shown in follow figure:
+
+![image-2](imgs/2.PNG)	
 
 ### Second Stage: GAN
+
+- Use second-stage MPGAN to refine the fake images:
 
 ```python
 python 2_mpgan.py
@@ -44,11 +59,15 @@ python 2_mpgan.py
 
 ## Data
 
+Due to the size of each individual stack, which can be as big as $512\times 512\times 512$, it is not practical to input the whole stack into a deep neural network. Instead, we use small patches with the size of $64 \times 64\times 32$. To exclude patches containing too few foreground voxels, we use a sliding window  to traverse each stack. 
 
+- Use OTSU to segment the image. 
 
-![image-3](imgs/3.png)	
+- Skeletonize the neuron image to get the neuron centerline. 
 
+- Slide the window to traverse the image on centerline  to ensure that the neuron branches are centered in the training data.
 
+![image-3](imgs/3.PNG)	
 
 
 ## Reference
