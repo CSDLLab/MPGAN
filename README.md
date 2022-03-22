@@ -6,7 +6,7 @@ Implementation of the paper **Using Simulated Training Data of Voxel-level Gener
 
 In this paper, we propose a novel strategy of using two-stage generative models to simulate training data with voxel-level labels (MPGAN). Trained upon unlabeled data by optimizing a novel objective function of preserving predefined labels, the models are able to synthesize realistic 3D images with underlying voxel labels. The framework of MPGAN model is shown as follow:
 
-![image-20220318174040337](imgs/1.png)	
+![image-1](imgs/1.png)	
 
 ## Getting Started
 
@@ -34,7 +34,7 @@ conda install --yes --file requirements.txt
 python 1_simulator.py
 ```
 
-<img src="imgs/2.png" alt="image-20220318174040337"  />	
+![image-2](imgs/2.png)	
 
 ### Second Stage: GAN
 
@@ -46,7 +46,7 @@ python 2_mpgan.py
 
 
 
-![image-20220318174040337](imgs/3.png)	
+![image-3](imgs/3.png)	
 
 
 
