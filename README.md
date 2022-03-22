@@ -59,7 +59,7 @@ python 2_mpgan.py
 
 ## Data
 
-Due to the size of each individual stack, which can be as big as $512\times 512\times 512$, it is not practical to input the whole stack into a deep neural network. Instead, we use small patches with the size of $64 \times 64\times 32$. To exclude patches containing too few foreground voxels, we use a sliding window  to traverse each stack. 
+Due to the size of each individual stack, which can be as big as 512 * 512 * 512, it is not practical to input the whole stack into a deep neural network. Instead, we use small patches with the size of 64 * 64 * 32. To exclude patches containing too few foreground voxels, we use a sliding window  to traverse each stack. 
 
 - Use OTSU to segment the image. 
 
@@ -71,3 +71,5 @@ Due to the size of each individual stack, which can be as big as $512\times 512\
 
 
 ## Reference
+
+ to be continue...
