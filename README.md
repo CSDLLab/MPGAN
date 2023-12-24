@@ -72,4 +72,18 @@ Due to the size of each individual stack, which can be as big as 512 * 512 * 512
 
 ## Reference
 
- to be continue...
+If you find MPGAN useful in your work, please consider citing our paper:
+
+```
+@article{liu2022using,
+  title={Using simulated training data of voxel-level generative models to improve 3D neuron reconstruction},
+  author={Liu, Chao and Wang, Deli and Zhang, Han and Wu, Wei and Sun, Wenzhi and Zhao, Ting and Zheng, Nenggan},
+  journal={IEEE transactions on medical imaging},
+  volume={41},
+  number={12},
+  pages={3624--3635},
+  year={2022},
+  publisher={IEEE}
+}
+```
+
